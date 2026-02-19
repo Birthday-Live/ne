@@ -40,6 +40,7 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextCaption;
 import org.telegram.ui.Components.EditTextEmoji;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.ReplaceableIconDrawable;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.TextStyleSpan;
 import org.telegram.ui.Components.TypefaceSpan;
@@ -49,7 +50,8 @@ public class EditEmojiTextCell extends FrameLayout {
     private boolean ignoreEditText;
     public final EditTextEmoji editTextEmoji;
     private int maxLength;
-    private ImageView[] iconImageView = new ImageView[2];
+    private ImageView iconImageView;
+    private ReplaceableIconDrawable iconImageDrawable;
 
     private boolean showLimitWhenEmpty;
     private int showLimitWhenNear = -1;
@@ -273,29 +275,22 @@ public class EditEmojiTextCell extends FrameLayout {
     }
 
     public void setOnChangeIconListener(OnClickListener listener) {
-        editTextEmoji.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.RIGHT | Gravity.TOP, 72 - 7 - 21, 0, 0, 0));
-        for (int i = 0; i < iconImageView.length; i++) {
-            iconImageView[i] = new ImageView(getContext());
-            iconImageView[i].setFocusable(true);
-            iconImageView[i].setVisibility(i == 0 ? VISIBLE : GONE);
-            iconImageView[i].setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_stickers_menuSelector)));
-            iconImageView[i].setScaleType(ImageView.ScaleType.CENTER);
-            iconImageView[i].setOnClickListener(listener);
-            iconImageView[i].setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon), PorterDuff.Mode.MULTIPLY));
-            iconImageView[i].setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-            addView(iconImageView[i], LayoutHelper.createFrame(48, 48, Gravity.LEFT | Gravity.CENTER_VERTICAL, 12, 0, 8, 0));
+        if (iconImageView == null) {
+            editTextEmoji.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.RIGHT | Gravity.TOP, 72 - 7 - 21, 0, 0, 0));
+            iconImageView = new ImageView(getContext());
+            iconImageView.setFocusable(true);
+            iconImageView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_stickers_menuSelector)));
+            iconImageView.setScaleType(ImageView.ScaleType.CENTER);
+            iconImageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chat_messagePanelIcons), PorterDuff.Mode.MULTIPLY));
+            iconImageView.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            iconImageView.setImageDrawable(iconImageDrawable = new ReplaceableIconDrawable(getContext()));
+            addView(iconImageView, LayoutHelper.createFrame(48, 48, Gravity.LEFT | Gravity.CENTER_VERTICAL, 12, 0, 8, 0));
         }
+        iconImageView.setOnClickListener(listener);
     }
 
     public void setIcon(int icon, boolean animated) {
-        iconImageView[animated ? 1 : 0].setImageResource(icon);
-        if (animated) {
-            ImageView tmp = iconImageView[0];
-            iconImageView[0] = iconImageView[1];
-            iconImageView[1] = tmp;
-        }
-        AndroidUtilities.updateViewVisibilityAnimated(iconImageView[0], true, 0.5f, animated);
-        AndroidUtilities.updateViewVisibilityAnimated(iconImageView[1], false, 0.5f, animated);
+        iconImageDrawable.setIcon(icon, animated);
     }
 
     public void setText(CharSequence text) {
