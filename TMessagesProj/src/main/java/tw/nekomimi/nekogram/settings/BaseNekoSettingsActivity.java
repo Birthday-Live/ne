@@ -379,6 +379,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
     }
 
     public void scrollToRow(String key, Runnable unknown) {
+        if (listView == null) return;
         var position = listView.findPositionByItemSlug(key);
         if (position != -1) {
             listView.highlightRow(() -> {

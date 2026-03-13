@@ -413,7 +413,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
                 ((TextCheckCell) view).setChecked(NekoConfig.hideTimeOnSticker);
             }
             var stickerCell = listView.findViewByItemId(stickerSizeRow);
-            stickerCell.invalidate();
+            if (stickerCell != null) stickerCell.invalidate();
         } else if (id == markdownParserRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             arrayList.add("Nekogram");

@@ -73,8 +73,10 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(showRPCErrorRow, LocaleController.getString(R.string.ShowRPCError), LocaleController.formatString(R.string.ShowRPCErrorException, "FILE_REFERENCE_EXPIRED")).slug("showRPCError").setChecked(NekoConfig.showRPCError));
         items.add(UItem.asShadow(null));
 
-        items.add(TextDetailSettingsCellFactory.of(checkUpdateRow, LocaleController.getString(R.string.CheckUpdate), UpdateHelper.formatDateUpdate(SharedConfig.lastUpdateCheckTime)).slug("checkUpdate"));
-        items.add(UItem.asShadow(null));
+        if (getParentActivity() instanceof LaunchActivity) {
+            items.add(TextDetailSettingsCellFactory.of(checkUpdateRow, LocaleController.getString(R.string.CheckUpdate), UpdateHelper.formatDateUpdate(SharedConfig.lastUpdateCheckTime)).slug("checkUpdate"));
+            items.add(UItem.asShadow(null));
+        }
 
         if (AnalyticsHelper.isSettingsAvailable()) {
             items.add(UItem.asHeader(LocaleController.getString(R.string.SendAnonymousData)));
@@ -255,15 +257,17 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.keepFormatting);
             }
         } else if (id == checkUpdateRow) {
-            ((LaunchActivity) getParentActivity()).checkAppUpdate(true, new Browser.Progress() {
-                @Override
-                public void end() {
-                    item.subtext = UpdateHelper.formatDateUpdate(SharedConfig.lastUpdateCheckTime);
-                    listView.adapter.notifyItemChanged(position);
-                }
-            });
-            item.subtext = LocaleController.getString(R.string.CheckingUpdate);
-            listView.adapter.notifyItemChanged(position);
+            if (getParentActivity() instanceof LaunchActivity launchActivity) {
+                launchActivity.checkAppUpdate(true, new Browser.Progress() {
+                    @Override
+                    public void end() {
+                        item.subtext = UpdateHelper.formatDateUpdate(SharedConfig.lastUpdateCheckTime);
+                        listView.adapter.notifyItemChanged(position);
+                    }
+                });
+                item.subtext = LocaleController.getString(R.string.CheckingUpdate);
+                listView.adapter.notifyItemChanged(position);
+            }
         }
     }
 
