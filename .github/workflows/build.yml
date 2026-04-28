@@ -7,24 +7,29 @@ on:
       - '**.md'
       - '.github/**'
       - '!.github/workflows/build.yml'
+
   pull_request:
     branches: [ "main", "dev" ]
     paths-ignore:
       - '**.md'
+
   workflow_call:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     permissions:
       id-token: write
       attestations: write
       artifact-metadata: write
+
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_HARDLINK: "true"
       CCACHE_NOHASHDIR: "true"
       CCACHE_MAXSIZE: "10G"
+
     steps:
       - uses: actions/checkout@v6
 
@@ -32,7 +37,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
 
       - name: Set up ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -55,6 +60,17 @@ jobs:
           echo 'org.gradle.jvmargs=-Xmx8192m -Dfile.encoding=UTF-8 -XX:+UseParallelGC' >> ~/.gradle/gradle.properties
           echo 'android.native.buildOutput=verbose' >> ~/.gradle/gradle.properties
 
+      # =========================
+      # 1. 先解密 keystore（重要修复）
+      # =========================
+      - name: Decode Keystore
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.KEYSTORE_JKS }}" | base64 --decode > keystore.jks
+
+      # =========================
+      # 2. Signing 配置
+      # =========================
       - name: Configure Signing
         if: github.event_name != 'pull_request'
         run: |
@@ -62,9 +78,10 @@ jobs:
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> local.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> local.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> local.properties
-          
-          echo "${{ secrets.KEYSTORE_JKS }}" | base64 --decode > keystore.jks
 
+      # =========================
+      # 3. API / Telegram 参数
+      # =========================
       - name: Configure Secrets
         if: github.event_name != 'pull_request'
         run: |
@@ -73,33 +90,41 @@ jobs:
           echo "helperBotId=${{ secrets.HELPER_BOT_ID }}" >> local.properties
           echo "helperBotUsername=${{ secrets.HELPER_BOT_USERNAME }}" >> local.properties
           echo "sentryDsn=${{ secrets.SENTRY_DSN }}" >> local.properties
-
-          echo "${{ secrets.SENTRY_PROPERTIES }}" | base64 --decode > sentry.properties
-
-      - name: Configure Build
-        run: |
           echo "twpicBotUsername=${{ secrets.TWPIC_BOT_USERNAME }}" >> local.properties
 
+      # =========================
+      # 4. Firebase（关键）
+      # =========================
+      - name: Configure Firebase
+        run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > TMessagesProj_App/google-services.json
 
-      - name: Build with Gradle (Debug)
+      # =========================
+      # 5. Sentry（安全版，可选）
+      # =========================
+      - name: Decode Sentry
+        if: ${{ secrets.SENTRY_PROPERTIES != '' && github.event_name != 'pull_request' }}
+        run: |
+          echo "${{ secrets.SENTRY_PROPERTIES }}" | base64 --decode > sentry.properties
+
+      # =========================
+      # 6. Build
+      # =========================
+      - name: Build Debug (PR)
         if: github.event_name == 'pull_request'
         run: |
           ./gradlew :TMessagesProj_App:assembleDebug
 
-      - name: Build with Gradle
+      - name: Build Release
         if: github.event_name != 'pull_request'
         run: |
           ./gradlew assembleRelease
           ./gradlew bundlePlay
           ./gradlew sentryUploadSourceBundlePlay
 
-      - name: Attest
-        if: github.event_name != 'pull_request'
-        uses: actions/attest@v4
-        with:
-          subject-path: '${{ github.workspace }}/TMessagesProj_App/build/outputs'
-
+      # =========================
+      # 7. Artifact
+      # =========================
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
