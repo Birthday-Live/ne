@@ -61,16 +61,13 @@ jobs:
           echo 'android.native.buildOutput=verbose' >> ~/.gradle/gradle.properties
 
       # =========================
-      # 1. 先解密 keystore（重要修复）
+      # Keystore
       # =========================
       - name: Decode Keystore
         if: github.event_name != 'pull_request'
         run: |
           echo "${{ secrets.KEYSTORE_JKS }}" | base64 --decode > keystore.jks
 
-      # =========================
-      # 2. Signing 配置
-      # =========================
       - name: Configure Signing
         if: github.event_name != 'pull_request'
         run: |
@@ -80,7 +77,7 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> local.properties
 
       # =========================
-      # 3. API / Telegram 参数
+      # App secrets
       # =========================
       - name: Configure Secrets
         if: github.event_name != 'pull_request'
@@ -93,20 +90,43 @@ jobs:
           echo "twpicBotUsername=${{ secrets.TWPIC_BOT_USERNAME }}" >> local.properties
 
       # =========================
-      # 4. Firebase（关键）
+      # Firebase
       # =========================
       - name: Configure Firebase
         run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > TMessagesProj_App/google-services.json
 
       # =========================
-      # 5. Sentry（安全版，可选）
+      # Sentry（修复关键点）
       # =========================
       - name: Decode Sentry
-        if: ${{ secrets.SENTRY_PROPERTIES != '' && github.event_name != 'pull_request' }}
+        if: github.event_name != 'pull_request' && secrets.SENTRY_PROPERTIES
         run: |
           echo "${{ secrets.SENTRY_PROPERTIES }}" | base64 --decode > sentry.properties
 
+      # =========================
+      # Build
+      # =========================
+      - name: Build Debug (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          ./gradlew :TMessagesProj_App:assembleDebug
+
+      - name: Build Release
+        if: github.event_name != 'pull_request'
+        run: |
+          ./gradlew assembleRelease
+          ./gradlew bundlePlay
+          ./gradlew sentryUploadSourceBundlePlay
+
+      # =========================
+      # Artifact
+      # =========================
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: outputs
+          path: TMessagesProj_App/build/outputs
       # =========================
       # 6. Build
       # =========================
